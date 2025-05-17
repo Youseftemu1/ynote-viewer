@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { jsPDF } from 'jspdf';
 
 // Dynamically import jsPDF with no SSR
 const JsPDFModule = dynamic(
@@ -59,7 +60,7 @@ export default function Home() {
     });
   };
 
-  // Client-side PDF generation using jsPDF - Simplified version
+  // Client-side PDF generation using jsPDF
   const handleClientPdf = async () => {
     if (!noteContent) {
       alert('Please upload a file or paste some text first!');
@@ -68,33 +69,37 @@ export default function Home() {
 
     setClientPdfLoading(true);
     try {
-      // Import jsPDF dynamically
-      const { jsPDF } = await JsPDFModule;
-      
       // Create new PDF document
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+      const doc = new jsPDF();
+      
+      // Set font size and line height
+      doc.setFontSize(12);
+      const lineHeight = 7;
+      
+      // Split text into lines that fit the page width
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      const maxWidth = pageWidth - (2 * margin);
+      
+      // Process text line by line
+      const lines = doc.splitTextToSize(noteContent, maxWidth);
+      let cursorY = margin;
+      
+      // Add lines to PDF, creating new pages as needed
+      lines.forEach((line) => {
+        if (cursorY > doc.internal.pageSize.getHeight() - margin) {
+          doc.addPage();
+          cursorY = margin;
+        }
+        doc.text(line, margin, cursorY);
+        cursorY += lineHeight;
       });
       
-      // Format text (replace tabs with spaces)
-      const formattedText = noteContent.replace(/\t/g, '    ');
-      
-      // Split text into lines to handle pagination
-      const lines = pdf.splitTextToSize(formattedText, 170); // 170mm width (with margins)
-      
-      // Add text to PDF
-      pdf.setFont('helvetica');
-      pdf.setFontSize(11);
-      pdf.text(lines, 20, 20); // 20mm margins
-      
       // Save the PDF
-      pdf.save('note-client.pdf');
-      
+      doc.save('note-client.pdf');
     } catch (error) {
       console.error('Error generating client-side PDF:', error);
-      alert('Failed to generate PDF on client. Please try again.');
+      alert('Failed to generate PDF. Please try again.');
     } finally {
       setClientPdfLoading(false);
     }
