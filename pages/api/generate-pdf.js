@@ -20,70 +20,55 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
+  let browser = null;
   try {
     const { html = '<h1>Default PDF Content</h1>' } = req.body;
 
-    // Launch headless browser with specific Chrome version
-    const browser = await puppeteer.launch({
-      args: [
-        ...chromium.args,
-        '--hide-scrollbars',
-        '--disable-web-security',
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-      ],
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-      ignoreHTTPSErrors: true,
+    // Launch headless browser using Vercel-compatible approach
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      executablePath: process.env.CHROME_EXECUTABLE_PATH || await chromium.executablePath(),
+      headless: true, // Force headless true
     });
 
-    // Create new page with specific viewport
+    // Create new page with minimal settings
     const page = await browser.newPage();
-    await page.setViewport({
-      width: 1024,
-      height: 768,
-      deviceScaleFactor: 1,
-    });
-    
-    // Set content with proper timeout
+    await page.setViewport({ width: 794, height: 1123 }); // A4 size in pixels
+
+    // Use basic content setting
     await page.setContent(html, {
-      waitUntil: ['domcontentloaded', 'networkidle0'],
-      timeout: 30000,
+      waitUntil: 'networkidle0',
     });
 
-    // Generate PDF with specific settings
+    // Generate PDF with minimal options
     const pdf = await page.pdf({
-      format: 'A4',
+      format: 'a4',
       printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px'
-      },
-      preferCSSPageSize: true,
-      timeout: 30000,
     });
 
-    // Make sure to close the browser
-    await browser.close();
+    // Close browser before sending response
+    if (browser) {
+      await browser.close();
+      browser = null;
+    }
 
-    // Send response with proper headers
+    // Set basic headers and send response
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=note.pdf');
-    res.setHeader('Content-Length', pdf.length);
-    res.status(200).send(pdf);
+    res.status(200).send(Buffer.from(pdf));
 
   } catch (error) {
     console.error('PDF generation error:', error);
-    // Close browser if it exists in error case
-    if (error.message) {
-      console.error('Error details:', error.message);
+    
+    // Close browser in case of error
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error('Error closing browser:', closeError);
+      }
     }
-    res.status(500).json({ 
-      error: 'Failed to generate PDF',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    
+    res.status(500).json({ error: 'Failed to generate PDF' });
   }
 } 

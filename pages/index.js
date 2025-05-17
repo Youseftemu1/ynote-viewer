@@ -51,51 +51,62 @@ export default function Home() {
 
     setIsLoading(true);
     try {
+      // Create simple HTML for the PDF
+      const htmlContent = `
+        <html>
+          <head>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                margin: 40px;
+                font-size: 12pt;
+              }
+              pre {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: Arial, sans-serif;
+              }
+            </style>
+          </head>
+          <body>
+            <pre>${noteContent}</pre>
+          </body>
+        </html>
+      `;
+
       const response = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          html: `
-            <html>
-              <head>
-                <style>
-                  body {
-                    font-family: Arial, sans-serif;
-                    line-height: 1.6;
-                    margin: 40px;
-                  }
-                  pre {
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                  }
-                </style>
-              </head>
-              <body>
-                <pre>${noteContent}</pre>
-              </body>
-            </html>
-          `
-        }),
+        body: JSON.stringify({ html: htmlContent }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate PDF');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to generate PDF');
       }
 
+      // Get blob directly from response
       const blob = await response.blob();
+      
+      // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'note.pdf';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      
+      // Clean up
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      alert(error.message || 'Failed to generate PDF. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +164,7 @@ export default function Home() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={handleTestButton}
-                className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg text-lg font-bold animate-pulse"
+                className="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-3 rounded-lg text-lg font-bold animate-pulse"
               >
                 TEST BUTTON
               </button>
