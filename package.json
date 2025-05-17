@@ -1,10 +1,15 @@
 {
-  "name": "pdf-generator",
+  "name": "ynote-viewer",
   "version": "1.0.0",
-  "description": "PDF generation with Puppeteer",
-  "main": "index.js",
+  "description": "YNote Viewer with PDF generation",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
   "dependencies": {
     "@sparticuz/chromium": "^119.0.0",
-    "puppeteer-core": "^21.5.0"
+    "puppeteer-core": "^21.5.0",
+    "next": "^14.0.3"
   }
 } 
