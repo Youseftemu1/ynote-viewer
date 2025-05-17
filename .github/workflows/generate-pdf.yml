@@ -1,0 +1,30 @@
+name: Generate PDF
+on:
+  http:
+    paths:
+      - /api/generatePDF
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          npm install puppeteer
+          
+      - name: Generate PDF
+        run: |
+          node api/generatePDF.js
+        
+      - name: Upload PDF
+        uses: actions/upload-artifact@v3
+        with:
+          name: generated-pdf
+          path: output.pdf 
