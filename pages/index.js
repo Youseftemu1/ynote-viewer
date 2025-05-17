@@ -59,7 +59,7 @@ export default function Home() {
     });
   };
 
-  // Client-side PDF generation using jsPDF
+  // Client-side PDF generation using jsPDF - Simplified version
   const handleClientPdf = async () => {
     if (!noteContent) {
       alert('Please upload a file or paste some text first!');
@@ -68,34 +68,28 @@ export default function Home() {
 
     setClientPdfLoading(true);
     try {
+      // Import jsPDF dynamically
       const { jsPDF } = await JsPDFModule;
-      const { html2canvas } = await Html2CanvasModule;
       
-      // Create a temporary div with proper styling
-      const tempDiv = document.createElement('div');
-      tempDiv.style.width = '800px';
-      tempDiv.style.padding = '20px';
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.fontFamily = 'Arial, sans-serif';
-      tempDiv.style.fontSize = '12pt';
-      tempDiv.style.lineHeight = '1.5';
-      tempDiv.style.whiteSpace = 'pre-wrap';
-      tempDiv.style.wordWrap = 'break-word';
-      tempDiv.innerHTML = noteContent.replace(/\n/g, '<br>');
-      document.body.appendChild(tempDiv);
-
-      // Generate PDF from the temp div
-      const canvas = await html2canvas(tempDiv);
-      document.body.removeChild(tempDiv);
+      // Create new PDF document
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
       
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      // Format text (replace tabs with spaces)
+      const formattedText = noteContent.replace(/\t/g, '    ');
       
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      // Split text into lines to handle pagination
+      const lines = pdf.splitTextToSize(formattedText, 170); // 170mm width (with margins)
+      
+      // Add text to PDF
+      pdf.setFont('helvetica');
+      pdf.setFontSize(11);
+      pdf.text(lines, 20, 20); // 20mm margins
+      
+      // Save the PDF
       pdf.save('note-client.pdf');
       
     } catch (error) {
