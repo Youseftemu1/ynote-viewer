@@ -6,6 +6,7 @@ export const config = {
     bodyParser: {
       sizeLimit: '10mb',
     },
+    responseLimit: '10mb',
   },
 };
 
@@ -22,24 +23,36 @@ export default async function handler(req, res) {
   try {
     const { html = '<h1>Default PDF Content</h1>' } = req.body;
 
-    // Launch headless browser
+    // Launch headless browser with specific Chrome version
     const browser = await puppeteer.launch({
-      args: [...chromium.args, '--hide-scrollbars', '--disable-web-security'],
+      args: [
+        ...chromium.args,
+        '--hide-scrollbars',
+        '--disable-web-security',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+      ],
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath(),
-      headless: true,
+      headless: chromium.headless,
       ignoreHTTPSErrors: true,
     });
 
-    // Create new page
+    // Create new page with specific viewport
     const page = await browser.newPage();
+    await page.setViewport({
+      width: 1024,
+      height: 768,
+      deviceScaleFactor: 1,
+    });
     
-    // Set content
+    // Set content with proper timeout
     await page.setContent(html, {
-      waitUntil: ['domcontentloaded', 'networkidle0']
+      waitUntil: ['domcontentloaded', 'networkidle0'],
+      timeout: 30000,
     });
 
-    // Generate PDF
+    // Generate PDF with specific settings
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -48,18 +61,29 @@ export default async function handler(req, res) {
         right: '20px',
         bottom: '20px',
         left: '20px'
-      }
+      },
+      preferCSSPageSize: true,
+      timeout: 30000,
     });
 
+    // Make sure to close the browser
     await browser.close();
 
-    // Send response
+    // Send response with proper headers
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=generated.pdf');
-    res.send(pdf);
+    res.setHeader('Content-Disposition', 'attachment; filename=note.pdf');
+    res.setHeader('Content-Length', pdf.length);
+    res.status(200).send(pdf);
 
   } catch (error) {
     console.error('PDF generation error:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    // Close browser if it exists in error case
+    if (error.message) {
+      console.error('Error details:', error.message);
+    }
+    res.status(500).json({ 
+      error: 'Failed to generate PDF',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 } 
