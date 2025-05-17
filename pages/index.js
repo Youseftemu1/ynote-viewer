@@ -150,6 +150,7 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
         <link rel="stylesheet" href="/styles.css" />
         <script src="https://cdn.tailwindcss.com"></script>
+        <script src="/viewer.js"></script>
       </Head>
       <div className="bg-gray-100 min-h-screen">
         <nav className="bg-white shadow-lg">
